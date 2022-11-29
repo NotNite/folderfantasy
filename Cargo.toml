@@ -7,6 +7,6 @@ edition = "2021"
 
 [dependencies]
 ironworks = { git = "https://github.com/ackwell/ironworks", features = ["sqpack"] }
-csv = "1.1"
 reqwest = { version = "0.11.11", features = ["blocking"] }
 clap = { version = "4.0.27", features = ["derive"] }
+flate2 = "1.0.25"

@@ -1,4 +1,5 @@
 use clap::Parser;
+use flate2::read::GzDecoder;
 use ironworks::{
     sqpack::{Install, SqPack},
     Ironworks,
@@ -6,6 +7,7 @@ use ironworks::{
 use std::{
     error::Error,
     fs,
+    io::Read,
     path::{Path, PathBuf},
 };
 
@@ -19,18 +21,13 @@ struct Args {
 }
 
 fn get_file_list() -> Result<Vec<String>, Box<dyn Error>> {
-    let body = reqwest::blocking::get("https://rl2.perchbird.dev/export.csv")?.text()?;
-    let mut rdr = csv::Reader::from_reader(body.as_bytes());
-    let mut output = Vec::new();
+    let body =
+        reqwest::blocking::get("https://rl2.perchbird.dev/download/export/PathList.gz")?.bytes()?;
+    let mut decoder = GzDecoder::new(&body[..]);
+    let mut content = String::new();
+    decoder.read_to_string(&mut content)?;
 
-    for result in rdr.records() {
-        let record = result?;
-        let path = record.get(2).unwrap();
-
-        output.push(path.to_string());
-    }
-
-    Ok(output)
+    Ok(content.split('\n').map(|s| s.trim().to_string()).collect())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
