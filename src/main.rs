@@ -22,7 +22,8 @@ struct Args {
 
 fn get_file_list() -> Result<Vec<String>, Box<dyn Error>> {
     let body =
-        reqwest::blocking::get("https://rl2.perchbird.dev/download/export/PathList.gz")?.bytes()?;
+        reqwest::blocking::get("https://rl2.perchbird.dev/download/export/CurrentPathList.gz")?
+            .bytes()?;
     let mut decoder = GzDecoder::new(&body[..]);
     let mut content = String::new();
     decoder.read_to_string(&mut content)?;
