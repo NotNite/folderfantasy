@@ -2,11 +2,12 @@
 name = "folderfantasy"
 description = "ffxiv game extractor"
 authors = ["NotNite <hi@notnite.com>"]
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-ironworks = { git = "https://github.com/ackwell/ironworks", features = ["sqpack"] }
+ironworks = { git = "https://github.com/ackwell/ironworks.git", features = ["sqpack"] }
 reqwest = { version = "0.11.11", features = ["blocking"] }
 clap = { version = "4.0.27", features = ["derive"] }
 flate2 = "1.0.25"

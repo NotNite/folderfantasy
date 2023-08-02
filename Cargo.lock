@@ -484,7 +484,7 @@ checksum = "879d54834c8c76457ef4293a689b2a8c59b076067ad77b15efafbb05f92a592b"
 [[package]]
 name = "ironworks"
 version = "0.4.1"
-source = "git+https://github.com/ackwell/ironworks#ed0af56eb1a580def41c8b9d52c36ec80c0c17be"
+source = "git+https://github.com/ackwell/ironworks.git#6b061fa9ae41b420edaa42d4be1c14a221f110ec"
 dependencies = [
  "binrw",
  "derivative",

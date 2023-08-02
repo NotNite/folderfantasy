@@ -9,6 +9,7 @@ use std::{
     fs,
     io::Read,
     path::{Path, PathBuf},
+    sync::{atomic::AtomicUsize, Arc},
 };
 
 #[derive(Parser, Debug)]
@@ -18,6 +19,9 @@ struct Args {
 
     /// The directory to output files to.
     output: PathBuf,
+
+    /// Amount of threads to split extraction between.
+    threads: Option<usize>,
 }
 
 fn get_file_list() -> Result<Vec<String>, Box<dyn Error>> {
@@ -33,36 +37,57 @@ fn get_file_list() -> Result<Vec<String>, Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
-    let out_dir = args.output;
-    let game_path = args.ffxiv_dir;
-
-    println!("Initializing ironworks...");
-    let mut ironworks = Ironworks::new();
-    ironworks.add_resource(SqPack::new(Install::at(&game_path)));
+    let threads = args.threads.unwrap_or(1);
 
     println!("Fetching file list...");
     let file_list = get_file_list()?;
     let file_count = file_list.len();
     println!("Found {} files to export!", file_count);
 
-    for (files_done, file_name) in file_list.into_iter().enumerate() {
-        let file = ironworks.file::<Vec<u8>>(&file_name);
+    // split file list into chunks
+    let chunks = file_list.chunks(file_count / threads);
+    let mut handles = Vec::new();
 
-        if let Ok(file) = file {
-            let file_path = out_dir.join(Path::new(&file_name));
+    let done = Arc::new(AtomicUsize::new(0));
+    for i in 0..threads {
+        let chunk = chunks.clone().nth(i).unwrap().to_vec();
 
-            let progress = (files_done as f64 / file_count as f64) * 100.;
-            println!(
-                "{} / {} ({:.2}%) - {}",
-                files_done, file_count, progress, file_name
-            );
+        let game_path = args.ffxiv_dir.clone();
+        let out_dir = args.output.clone();
+        let done = done.clone();
 
-            fs::create_dir_all(file_path.parent().unwrap())?;
-            fs::write(file_path, file)?;
-        }
+        let handle = std::thread::spawn(move || {
+            let mut ironworks = Ironworks::new();
+            ironworks.add_resource(SqPack::new(Install::at(&game_path)));
+
+            for file_name in chunk {
+                let file = ironworks.file::<Vec<u8>>(&file_name);
+                if let Ok(file) = file {
+                    let file_path = out_dir.join(Path::new(&file_name));
+                    fs::create_dir_all(file_path.parent().unwrap())
+                        .expect("Failed to create directory");
+                    fs::write(file_path, file).expect("Failed to write file");
+
+                    done.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+                    // print every 10k
+                    if done.load(std::sync::atomic::Ordering::SeqCst) % 1000 == 0 {
+                        println!(
+                            "{}/{}",
+                            done.load(std::sync::atomic::Ordering::SeqCst),
+                            file_count
+                        );
+                    }
+                }
+            }
+        });
+
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
     }
 
     println!("All files exported!");
-
     Ok(())
 }
